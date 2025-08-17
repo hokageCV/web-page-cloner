@@ -12,12 +12,19 @@ let TOOL_MAP = {
 let client = new OpenAI();
 
 async function main() {
+  let args = process.argv.slice(2)
+  if (args.length === 0) {
+    console.error('site url missing');
+    process.exit(1);
+  }
+  let siteUrl = args[0];
+
   let messages = [
     { role: 'system', content: SYSTEM_PROMPT, },
     {
       role: 'user',
       content: `
-        - site: 'https://www.piyushgarg.dev'
+        - site: '${siteUrl}'
         - make clone of above site.
       `,
     },
