@@ -6,6 +6,7 @@ import fs from 'fs';
 let TOOL_MAP = {
   executeCommand,
   fetchAndSaveHtml,
+  fetchAndSaveStyles,
 };
 
 let client = new OpenAI();
@@ -24,6 +25,7 @@ async function main() {
     Available Tools:
     - executeCommand(command: string): Takes a linux / unix command as arg and executes the command on user's machine and returns the output
     - fetchAndSaveHtml(url: string): curls the given site, and saves the response into a file
+    - fetchAndSaveStyles(url: string): gets all the styles associated with the site
 
     Rules:
     - Strictly follow the output JSON format
@@ -136,4 +138,35 @@ async function fetchAndSaveHtml(url = '') {
   fs.writeFileSync('clone.html', data)
 
   return 'HTML data fetched.'
+}
+
+async function fetchAndSaveStyles(url = '') {
+  try {
+    let html = fs.readFileSync('clone.html', 'utf8');
+
+    fs.mkdirSync('assets', { recursive: true });
+
+    let styleLinks = html.match(/<link[^>]*?rel="stylesheet"[^>]*?href="(.*?)"[^>]*?>/g) || []
+
+    for (let link of styleLinks) {
+      let styleUrl = link.match(/href="(.*?)"/)[1];
+      let fullUrl = styleUrl.startsWith('http') ? styleUrl : new URL(styleUrl, url).href;
+
+      try {
+        let css = await (await fetch(fullUrl)).text();
+        let localPath = `assets/style-${Date.now()}.css`;
+        fs.writeFileSync(localPath, css);
+
+        html = html.replace(link, `<link rel="stylesheet" href="${localPath}">`);
+      } catch (err) {
+        console.log(`Skipping ${fullUrl}:`, err.message);
+      }
+    }
+
+    fs.writeFileSync('clone.html', html);
+    return 'Styles saved successfully';
+
+  } catch (error) {
+    return `Error: ${error.message}`;
+  }
 }
